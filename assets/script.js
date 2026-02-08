@@ -8,7 +8,22 @@ const reviewGameBtn = document.getElementById("review-game-btn");
 const reviewArea = document.getElementById("review-area");
 const finishGameBtn = document.getElementById("finish-game-btn");
 const loader = document.getElementById("loader");
+const timerFill = document.getElementById("timer-fill");
 const moves = ["rock", "scissors", "paper"];
+
+const TIMER_SECONDS = 10;
+let timerInterval = null;
+
+const clickSound = new Audio("assets/lesiakower-laptop-touchpad-click-384384 (1).mp3");
+
+function playClickSound() {
+  clickSound.currentTime = 0;
+  clickSound.play();
+}
+
+document.querySelectorAll("button").forEach((btn) => {
+  btn.addEventListener("click", playClickSound);
+});
 
 let roundIds = [];
 let currentRound = 0;
@@ -48,11 +63,14 @@ startGameBtn.addEventListener("click", () => {
   gameArea.hidden = false;
   moveBtns.forEach((btn) => (btn.disabled = false));
   result.textContent = `Round ${currentRound + 1} of 5 — Pick your move!`;
+  result.className = "";
+  startTimer();
 });
 
 moveBtns.forEach((btn) => {
   btn.addEventListener("click", async () => {
     const playerMove = btn.dataset.move;
+    stopTimer();
     moveBtns.forEach((b) => (b.disabled = true));
 
     const id = roundIds[currentRound];
@@ -78,6 +96,7 @@ moveBtns.forEach((btn) => {
     const outcome = getOutcome(playerMove, botMove);
 
     result.textContent = `Round ${currentRound + 1}: You: ${playerMove} | Bot: ${botMove} → ${outcome}`;
+    result.className = outcome.toLowerCase();
 
     if (currentRound < 4) {
       nextRoundBtn.hidden = false;
@@ -92,6 +111,8 @@ nextRoundBtn.addEventListener("click", () => {
   nextRoundBtn.hidden = true;
   moveBtns.forEach((btn) => (btn.disabled = false));
   result.textContent = `Round ${currentRound + 1} of 5 — Pick your move!`;
+  result.className = "";
+  startTimer();
 });
 
 finishGameBtn.addEventListener("click", () => {
@@ -120,20 +141,47 @@ reviewGameBtn.addEventListener("click", async () => {
     const outcome = getOutcome(r.data.player, r.data.bot);
     if (outcome === "Win") wins++;
     html +=
-      "<p>Round " +
-      r.data.round +
-      ": You: " +
-      r.data.player +
-      " | Bot: " +
-      r.data.bot +
-      " → " +
-      outcome +
-      "</p>";
+      "<p class='review-" + outcome.toLowerCase() + "'>Round " + r.data.round +
+      ": You: " + r.data.player +
+      " | Bot: " + r.data.bot +
+      " → " + outcome + "</p>";
   }
 
   html += "<p><strong>Score: " + wins + "/5</strong></p>";
   reviewArea.innerHTML = html;
 });
+
+function startTimer() {
+  clearInterval(timerInterval);
+  let timeLeft = TIMER_SECONDS * 10;
+  timerFill.style.width = "100%";
+  timerFill.className = "";
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    const percent = (timeLeft / (TIMER_SECONDS * 10)) * 100;
+    timerFill.style.width = percent + "%";
+
+    if (percent <= 30) {
+      timerFill.className = "danger";
+    } else if (percent <= 60) {
+      timerFill.className = "warning";
+    }
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      const randomBtn = document.querySelectorAll(".move-btn:not(:disabled)");
+      if (randomBtn.length > 0) {
+        const pick = randomBtn[Math.floor(Math.random() * randomBtn.length)];
+        pick.click();
+      }
+    }
+  }, 100);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+}
 
 function getOutcome(player, bot) {
   if (player === bot) return "Draw";
