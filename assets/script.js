@@ -7,12 +7,16 @@ const nextRoundBtn = document.getElementById("next-round-btn");
 const reviewGameBtn = document.getElementById("review-game-btn");
 const reviewArea = document.getElementById("review-area");
 const finishGameBtn = document.getElementById("finish-game-btn");
+const loader = document.getElementById("loader");
 const moves = ["rock", "scissors", "paper"];
 
 let roundIds = [];
 let currentRound = 0;
 
 createGameBtn.addEventListener("click", async () => {
+  createGameBtn.hidden = true;
+  loader.hidden = false;
+
   const gameId = Date.now();
   roundIds = [];
 
@@ -31,6 +35,8 @@ createGameBtn.addEventListener("click", async () => {
     console.log(obj);
   }
 
+  loader.hidden = true;
+  createGameBtn.hidden = false;
   startGameBtn.hidden = false;
 });
 
