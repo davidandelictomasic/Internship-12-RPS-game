@@ -4,6 +4,9 @@ const gameArea = document.getElementById("game-area");
 const result = document.getElementById("result");
 const moveBtns = document.querySelectorAll(".move-btn");
 const nextRoundBtn = document.getElementById("next-round-btn");
+const reviewGameBtn = document.getElementById("review-game-btn");
+const reviewArea = document.getElementById("review-area");
+const finishGameBtn = document.getElementById("finish-game-btn");
 const moves = ["rock", "scissors", "paper"];
 
 let roundIds = [];
@@ -34,7 +37,10 @@ createGameBtn.addEventListener("click", async () => {
 startGameBtn.addEventListener("click", () => {
   currentRound = 0;
   startGameBtn.hidden = true;
+  reviewGameBtn.hidden = true;
+  reviewArea.hidden = true;
   gameArea.hidden = false;
+  moveBtns.forEach((btn) => (btn.disabled = false));
   result.textContent = `Round ${currentRound + 1} of 5 — Pick your move!`;
 });
 
@@ -69,6 +75,8 @@ moveBtns.forEach((btn) => {
 
     if (currentRound < 4) {
       nextRoundBtn.hidden = false;
+    } else {
+      finishGameBtn.hidden = false;
     }
   });
 });
@@ -78,6 +86,47 @@ nextRoundBtn.addEventListener("click", () => {
   nextRoundBtn.hidden = true;
   moveBtns.forEach((btn) => (btn.disabled = false));
   result.textContent = `Round ${currentRound + 1} of 5 — Pick your move!`;
+});
+
+finishGameBtn.addEventListener("click", () => {
+  finishGameBtn.hidden = true;
+  gameArea.hidden = true;
+  reviewGameBtn.hidden = false;
+});
+
+reviewGameBtn.addEventListener("click", async () => {
+  if (!reviewArea.hidden) {
+    reviewArea.hidden = true;
+    return;
+  }
+
+  reviewArea.hidden = false;
+
+  const query = roundIds.map((id) => "id=" + id).join("&");
+  const res = await fetch("https://api.restful-api.dev/objects?" + query);
+  const rounds = await res.json();
+
+  let wins = 0;
+  let html = "<h2>Game Review</h2>";
+
+  for (let i = 0; i < rounds.length; i++) {
+    const r = rounds[i];
+    const outcome = getOutcome(r.data.player, r.data.bot);
+    if (outcome === "Win") wins++;
+    html +=
+      "<p>Round " +
+      r.data.round +
+      ": You: " +
+      r.data.player +
+      " | Bot: " +
+      r.data.bot +
+      " → " +
+      outcome +
+      "</p>";
+  }
+
+  html += "<p><strong>Score: " + wins + "/5</strong></p>";
+  reviewArea.innerHTML = html;
 });
 
 function getOutcome(player, bot) {
