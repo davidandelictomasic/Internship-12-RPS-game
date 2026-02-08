@@ -3,9 +3,11 @@ const startGameBtn = document.getElementById("start-game-btn");
 const gameArea = document.getElementById("game-area");
 const result = document.getElementById("result");
 const moveBtns = document.querySelectorAll(".move-btn");
+const nextRoundBtn = document.getElementById("next-round-btn");
 const moves = ["rock", "scissors", "paper"];
 
 let roundIds = [];
+let currentRound = 0;
 
 createGameBtn.addEventListener("click", async () => {
   const gameId = Date.now();
@@ -30,9 +32,10 @@ createGameBtn.addEventListener("click", async () => {
 });
 
 startGameBtn.addEventListener("click", () => {
+  currentRound = 0;
   startGameBtn.hidden = true;
   gameArea.hidden = false;
-  result.textContent = " Pick your move!";
+  result.textContent = `Round ${currentRound + 1} of 5 — Pick your move!`;
 });
 
 moveBtns.forEach((btn) => {
@@ -40,7 +43,7 @@ moveBtns.forEach((btn) => {
     const playerMove = btn.dataset.move;
     moveBtns.forEach((b) => (b.disabled = true));
 
-    const id = roundIds[0];
+    const id = roundIds[currentRound];
 
     const getRes = await fetch(`https://api.restful-api.dev/objects/${id}`);
     const roundData = await getRes.json();
@@ -62,8 +65,19 @@ moveBtns.forEach((btn) => {
     const botMove = roundData.data.bot;
     const outcome = getOutcome(playerMove, botMove);
 
-    result.textContent = `You: ${playerMove} | Bot: ${botMove} → ${outcome}`;
+    result.textContent = `Round ${currentRound + 1}: You: ${playerMove} | Bot: ${botMove} → ${outcome}`;
+
+    if (currentRound < 4) {
+      nextRoundBtn.hidden = false;
+    }
   });
+});
+
+nextRoundBtn.addEventListener("click", () => {
+  currentRound++;
+  nextRoundBtn.hidden = true;
+  moveBtns.forEach((btn) => (btn.disabled = false));
+  result.textContent = `Round ${currentRound + 1} of 5 — Pick your move!`;
 });
 
 function getOutcome(player, bot) {
