@@ -1,0 +1,100 @@
+:root {
+  --dark-navy: #1a1a2e;
+  --navy: #16213e;
+  --blue: #0f3460;
+  --red: #e94560;
+  --white: #eee;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--dark-navy);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  color: var(--red);
+}
+
+#menu {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: var(--blue);
+  color: white;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+button:hover:not(:disabled) {
+  transform: scale(1.05);
+  background-color: var(--red);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#game-area {
+  background-color: var(--navy);
+  padding: 30px 40px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.move-btn {
+  margin: 0 8px;
+  padding: 14px 28px;
+  font-size: 1.1rem;
+}
+
+#result {
+  margin: 20px 0;
+  font-size: 1.2rem;
+  min-height: 1.5em;
+}
+
+#next-round-btn,
+#finish-game-btn {
+  margin-top: 10px;
+}
+
+#review-area {
+  background-color: var(--navy);
+  padding: 24px 32px;
+  border-radius: 12px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+#review-area h2 {
+  color: var(--red);
+  margin-bottom: 16px;
+}
+
+#review-area p {
+  margin: 8px 0;
+  font-size: 1.05rem;
+}
