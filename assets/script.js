@@ -13,8 +13,14 @@ const moves = ["rock", "scissors", "paper"];
 
 const TIMER_SECONDS = 10;
 let timerInterval = null;
+let roundIds = [];
+let localRounds = [];
+let useLocal = false;
+let currentRound = 0;
 
-const clickSound = new Audio("assets/lesiakower-laptop-touchpad-click-384384 (1).mp3");
+const clickSound = new Audio(
+  "assets/lesiakower-laptop-touchpad-click-384384 (1).mp3",
+);
 
 function playClickSound() {
   clickSound.currentTime = 0;
@@ -25,29 +31,50 @@ document.querySelectorAll("button").forEach((btn) => {
   btn.addEventListener("click", playClickSound);
 });
 
-let roundIds = [];
-let currentRound = 0;
+const savedGame = localStorage.getItem("lastGame");
+if (savedGame) {
+  reviewGameBtn.hidden = false;
+}
 
 createGameBtn.addEventListener("click", async () => {
   createGameBtn.hidden = true;
   loader.hidden = false;
+  gameArea.hidden = true;
+  reviewArea.hidden = true;
+  stopTimer();
 
   const gameId = Date.now();
   roundIds = [];
+  localRounds = [];
+  useLocal = false;
 
-  for (let i = 1; i <= 5; i++) {
-    const botMove = moves[Math.floor(Math.random() * 3)];
-    const res = await fetch("https://api.restful-api.dev/objects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: `rps-game-${gameId}`,
-        data: { gameId, round: i, bot: botMove, player: "pending" },
-      }),
-    });
-    const obj = await res.json();
-    roundIds.push(obj.id);
-    console.log(obj);
+  try {
+    for (let i = 1; i <= 5; i++) {
+      const botMove = moves[Math.floor(Math.random() * 3)];
+      const res = await fetch("https://api.restful-api.dev/objects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `rps-game-${gameId}`,
+          data: { gameId, round: i, bot: botMove, player: "pending" },
+        }),
+      });
+      if (!res.ok) throw new Error("API error");
+      const obj = await res.json();
+      roundIds.push(obj.id);
+      localRounds.push({ gameId, round: i, bot: botMove, player: "pending" });
+      console.log(obj);
+    }
+  } catch (err) {
+    console.log("API failed, using local mode:", err);
+    useLocal = true;
+    roundIds = [];
+    localRounds = [];
+    for (let i = 1; i <= 5; i++) {
+      const botMove = moves[Math.floor(Math.random() * 3)];
+      localRounds.push({ gameId, round: i, bot: botMove, player: "pending" });
+      roundIds.push(i - 1);
+    }
   }
 
   loader.hidden = true;
@@ -73,26 +100,41 @@ moveBtns.forEach((btn) => {
     stopTimer();
     moveBtns.forEach((b) => (b.disabled = true));
 
-    const id = roundIds[currentRound];
+    let botMove;
 
-    const getRes = await fetch(`https://api.restful-api.dev/objects/${id}`);
-    const roundData = await getRes.json();
+    if (useLocal) {
+      botMove = localRounds[currentRound].bot;
+      localRounds[currentRound].player = playerMove;
+    } else {
+      try {
+        const id = roundIds[currentRound];
 
-    await fetch(`https://api.restful-api.dev/objects/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: roundData.name,
-        data: {
-          gameId: roundData.data.gameId,
-          round: roundData.data.round,
-          bot: roundData.data.bot,
-          player: playerMove,
-        },
-      }),
-    });
+        const getRes = await fetch(`https://api.restful-api.dev/objects/${id}`);
+        const roundData = await getRes.json();
 
-    const botMove = roundData.data.bot;
+        await fetch(`https://api.restful-api.dev/objects/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: roundData.name,
+            data: {
+              gameId: roundData.data.gameId,
+              round: roundData.data.round,
+              bot: roundData.data.bot,
+              player: playerMove,
+            },
+          }),
+        });
+
+        botMove = roundData.data.bot;
+        localRounds[currentRound].player = playerMove;
+      } catch (err) {
+        console.log("API failed on move, using local:", err);
+        useLocal = true;
+        botMove = localRounds[currentRound].bot;
+        localRounds[currentRound].player = playerMove;
+      }
+    }
     const outcome = getOutcome(playerMove, botMove);
 
     result.textContent = `Round ${currentRound + 1}: You: ${playerMove} | Bot: ${botMove} → ${outcome}`;
@@ -119,6 +161,15 @@ finishGameBtn.addEventListener("click", () => {
   finishGameBtn.hidden = true;
   gameArea.hidden = true;
   reviewGameBtn.hidden = false;
+
+  localStorage.setItem(
+    "lastGame",
+    JSON.stringify({
+      roundIds: roundIds,
+      localRounds: localRounds,
+      useLocal: useLocal,
+    }),
+  );
 });
 
 reviewGameBtn.addEventListener("click", async () => {
@@ -129,22 +180,44 @@ reviewGameBtn.addEventListener("click", async () => {
 
   reviewArea.hidden = false;
 
-  const query = roundIds.map((id) => "id=" + id).join("&");
-  const res = await fetch("https://api.restful-api.dev/objects?" + query);
-  const rounds = await res.json();
+  const saved = JSON.parse(localStorage.getItem("lastGame"));
+  if (!saved) return;
+
+  let rounds;
+
+  if (saved.useLocal) {
+    rounds = saved.localRounds;
+  } else {
+    try {
+      const query = saved.roundIds.map((id) => "id=" + id).join("&");
+      const res = await fetch("https://api.restful-api.dev/objects?" + query);
+      const data = await res.json();
+      rounds = data.map((r) => r.data);
+    } catch (err) {
+      console.log("API failed on review, using local:", err);
+      rounds = saved.localRounds;
+    }
+  }
 
   let wins = 0;
   let html = "<h2>Game Review</h2>";
 
   for (let i = 0; i < rounds.length; i++) {
     const r = rounds[i];
-    const outcome = getOutcome(r.data.player, r.data.bot);
+    const outcome = getOutcome(r.player, r.bot);
     if (outcome === "Win") wins++;
     html +=
-      "<p class='review-" + outcome.toLowerCase() + "'>Round " + r.data.round +
-      ": You: " + r.data.player +
-      " | Bot: " + r.data.bot +
-      " → " + outcome + "</p>";
+      "<p class='review-" +
+      outcome.toLowerCase() +
+      "'>Round " +
+      r.round +
+      ": You: " +
+      r.player +
+      " | Bot: " +
+      r.bot +
+      " → " +
+      outcome +
+      "</p>";
   }
 
   html += "<p><strong>Score: " + wins + "/5</strong></p>";
